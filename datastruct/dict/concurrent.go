@@ -160,16 +160,17 @@ func (dict *ConcurrentDict) PutIfExistsWithoutLock(key string, val any) int {
 	return 1
 }
 
-func (dict *ConcurrentDict) Remove(key string) (val any, exist bool) {
+func (dict *ConcurrentDict) Remove(key string) (any, int) {
 	shard := dict.getShard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
-	val, exist = shard.m[key]
+	val, exist := shard.m[key]
 	if exist {
 		delete(shard.m, key)
 		dict.decreaseCount()
+		return val, 1
 	}
-	return
+	return nil, 0
 }
 
 func (dict *ConcurrentDict) RemoveWithoutLock(key string) (val any, exist bool) {
@@ -181,8 +182,6 @@ func (dict *ConcurrentDict) RemoveWithoutLock(key string) (val any, exist bool) 
 	}
 	return
 }
-
-type Consumer func(key string, val any) (continues bool)
 
 func (dict *ConcurrentDict) ForEach(consumer Consumer) {
 	for _, shard := range dict.table {
